@@ -1,0 +1,366 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  passwordHash  String
+  role          String    @default("CLIENT") // CLIENT, BROKER, ADMIN
+  firstName     String
+  lastName      String
+  phone         String?
+  avatarUrl     String?
+  isVerified    Boolean   @default(false)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  profile       Profile?
+  verification  Verification?
+  properties    Property[]      @relation("BrokerProperties")
+  favorites     Favorite[]
+  clientBookings Viewing[]      @relation("ClientBookings")
+  brokerBookings Viewing[]      @relation("BrokerBookings")
+  reviewsGiven  Review[]        @relation("ReviewsGiven")
+  reviewsReceived Review[]      @relation("ReviewsReceived")
+  conversationsAsClient Conversation[] @relation("ClientConversations")
+  conversationsAsBroker Conversation[] @relation("BrokerConversations")
+  messages      Message[]
+  contractsAsTenant Contract[]  @relation("TenantContracts")
+  contractsAsBroker Contract[]  @relation("BrokerContracts")
+  notifications Notification[]
+  reportsFiled  Report[]        @relation("ReportsFiled")
+  auditLogs     AuditLog[]
+
+  @@index([role])
+  @@index([email])
+}
+
+model Profile {
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bio             String?
+  experienceYears Int?     @default(0)
+  companyName     String?
+  specialization  String?
+  telegram        String?
+  whatsapp        String?
+  ratingAvg       Float    @default(5.0)
+  totalDeals      Int      @default(0)
+  responseTimeMin Int      @default(15)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model Verification {
+  id             String    @id @default(cuid())
+  userId         String    @unique
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status         String    @default("PENDING") // PENDING, VERIFIED, REJECTED
+  idDocumentType String?   @default("PASSPORT")
+  documentNumber String?
+  selfieUrl      String?
+  verifiedAt     DateTime?
+  reviewerNote   String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+}
+
+model Region {
+  id        String     @id @default(cuid())
+  nameUz    String
+  nameRu    String?
+  code      String     @unique
+  districts District[]
+  properties Property[]
+}
+
+model District {
+  id        String     @id @default(cuid())
+  regionId  String
+  region    Region     @relation(fields: [regionId], references: [id], onDelete: Cascade)
+  nameUz    String
+  nameRu    String?
+  mahallas  Mahalla[]
+  properties Property[]
+
+  @@index([regionId])
+}
+
+model Mahalla {
+  id         String     @id @default(cuid())
+  districtId String
+  district   District   @relation(fields: [districtId], references: [id], onDelete: Cascade)
+  nameUz     String
+  properties Property[]
+
+  @@index([districtId])
+}
+
+model Property {
+  id           String          @id @default(cuid())
+  title        String
+  description  String
+  price        Float
+  currency     String          @default("UZS") // UZS, USD
+  rentPeriod   String          @default("MONTHLY") // MONTHLY, DAILY, SHORT_TERM, LONG_TERM
+  propertyType String          @default("APARTMENT") // APARTMENT, HOUSE, YARD, DORM, OTHER
+  rooms        Int             @default(1)
+  area         Float           @default(50.0) // m2
+  floor        Int?            @default(1)
+  totalFloors  Int?            @default(9)
+  furnished    Boolean         @default(true)
+  address      String
+  regionId     String
+  region       Region          @relation(fields: [regionId], references: [id])
+  districtId   String
+  district     District        @relation(fields: [districtId], references: [id])
+  mahallaId    String?
+  mahalla      Mahalla?        @relation(fields: [mahallaId], references: [id])
+  latitude     Float?
+  longitude    Float?
+  status       String          @default("APPROVED") // DRAFT, PENDING, APPROVED, REJECTED, RENTED, ARCHIVED
+  views        Int             @default(0)
+  rating       Float           @default(5.0)
+  brokerId     String
+  broker       User            @relation("BrokerProperties", fields: [brokerId], references: [id], onDelete: Cascade)
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+
+  images       PropertyImage[]
+  amenities    PropertyAmenity[]
+  favorites    Favorite[]
+  reviews      Review[]
+  viewings     Viewing[]
+  contracts    Contract[]
+  conversations Conversation[]
+
+  @@index([regionId])
+  @@index([districtId])
+  @@index([brokerId])
+  @@index([status])
+  @@index([price])
+}
+
+model PropertyImage {
+  id         String   @id @default(cuid())
+  propertyId String
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  url        String
+  isPrimary  Boolean  @default(false)
+  caption    String?
+  order      Int      @default(0)
+
+  @@index([propertyId])
+}
+
+model Amenity {
+  id         String            @id @default(cuid())
+  name       String            @unique
+  iconKey    String
+  properties PropertyAmenity[]
+}
+
+model PropertyAmenity {
+  id         String   @id @default(cuid())
+  propertyId String
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  amenityId  String
+  amenity    Amenity  @relation(fields: [amenityId], references: [id], onDelete: Cascade)
+
+  @@unique([propertyId, amenityId])
+  @@index([propertyId])
+  @@index([amenityId])
+}
+
+model Favorite {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  propertyId String
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+
+  @@unique([userId, propertyId])
+  @@index([userId])
+  @@index([propertyId])
+}
+
+model Review {
+  id           String   @id @default(cuid())
+  authorId     String
+  author       User     @relation("ReviewsGiven", fields: [authorId], references: [id], onDelete: Cascade)
+  targetUserId String?
+  targetUser   User?    @relation("ReviewsReceived", fields: [targetUserId], references: [id])
+  propertyId   String?
+  property     Property? @relation(fields: [propertyId], references: [id])
+  rating       Int      @default(5)
+  comment      String
+  roleScope    String   @default("BROKER") // BROKER, CLIENT, PROPERTY
+  createdAt    DateTime @default(now())
+
+  @@index([authorId])
+  @@index([targetUserId])
+  @@index([propertyId])
+}
+
+model Conversation {
+  id         String    @id @default(cuid())
+  clientId   String
+  client     User      @relation("ClientConversations", fields: [clientId], references: [id], onDelete: Cascade)
+  brokerId   String
+  broker     User      @relation("BrokerConversations", fields: [brokerId], references: [id], onDelete: Cascade)
+  propertyId String?
+  property   Property? @relation(fields: [propertyId], references: [id])
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  messages   Message[]
+
+  @@unique([clientId, brokerId, propertyId])
+  @@index([clientId])
+  @@index([brokerId])
+}
+
+model Message {
+  id             String       @id @default(cuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  senderId       String
+  sender         User         @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  text           String
+  imageUrl       String?
+  isRead         Boolean      @default(false)
+  createdAt      DateTime     @default(now())
+
+  @@index([conversationId])
+  @@index([senderId])
+}
+
+model Viewing {
+  id            String    @id @default(cuid())
+  propertyId    String
+  property      Property  @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  clientId      String
+  client        User      @relation("ClientBookings", fields: [clientId], references: [id], onDelete: Cascade)
+  brokerId      String
+  broker        User      @relation("BrokerBookings", fields: [brokerId], references: [id], onDelete: Cascade)
+  scheduledTime DateTime
+  notes         String?
+  status        String    @default("PENDING") // PENDING, CONFIRMED, CANCELLED, COMPLETED, NO_SHOW
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([propertyId])
+  @@index([clientId])
+  @@index([brokerId])
+  @@index([status])
+}
+
+model Contract {
+  id                String       @id @default(cuid())
+  contractNumber    String       @unique
+  landlordName      String
+  landlordPhone     String
+  tenantId          String
+  tenant            User         @relation("TenantContracts", fields: [tenantId], references: [id], onDelete: Cascade)
+  brokerId          String
+  broker            User         @relation("BrokerContracts", fields: [brokerId], references: [id], onDelete: Cascade)
+  propertyId        String
+  property          Property     @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  regionName        String
+  districtName      String
+  mahallaName       String?
+  address           String
+  startDate         DateTime
+  endDate           DateTime
+  rentAmount        Float
+  paymentDate       Int          @default(1)
+  depositAmount     Float        @default(0)
+  utilitiesIncluded String?
+  furnitureList     String?
+  additionalTerms   String?
+  status            String       @default("PENDING") // DRAFT, PENDING, APPROVED, ACTIVE, EXPIRED, TERMINATED
+  tenantApproved    Boolean      @default(false)
+  brokerApproved    Boolean      @default(false)
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+
+  handoverAct       HandoverAct?
+
+  @@index([tenantId])
+  @@index([brokerId])
+  @@index([propertyId])
+  @@index([status])
+}
+
+model HandoverAct {
+  id                String    @id @default(cuid())
+  contractId        String    @unique
+  contract          Contract  @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  meterGas          String?
+  meterElectricity  String?
+  meterWater        String?
+  propertyCondition String?
+  furnitureNotes    String?
+  photosJson        String?
+  tenantApproved    Boolean   @default(false)
+  brokerApproved    Boolean   @default(false)
+  signedDate        DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  message   String
+  type      String   @default("INFO") // INFO, BOOKING, CONTRACT, CHAT, PROPERTY
+  link      String?
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([isRead])
+}
+
+model Report {
+  id          String   @id @default(cuid())
+  reporterId  String
+  reporter    User     @relation("ReportsFiled", fields: [reporterId], references: [id], onDelete: Cascade)
+  targetType  String   // PROPERTY, USER
+  targetId    String
+  reason      String   // FAKE_PROPERTY, FAKE_BROKER, WRONG_PRICE, SCAM, OFFENSIVE, OTHER
+  description String
+  status      String   @default("PENDING") // PENDING, RESOLVED, DISMISSED
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([reporterId])
+  @@index([targetType, targetId])
+  @@index([status])
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  action    String
+  entity    String
+  entityId  String?
+  details   String?
+  ipAddress String?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([entity])
+  @@index([action])
+}
