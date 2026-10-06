@@ -16,26 +16,26 @@ const API_BASE = '/api';
 // Initial Mock Database for static deployment / serverless fallback
 const initialUsers: User[] = [
   {
-    id: 'user_broker_1',
+    id: 'user_admin_owner',
     email: 'dnasriddinova087@gmail.com',
-    role: 'BROKER',
+    role: 'ADMIN',
     firstName: 'Dilfuza',
     lastName: 'Nasriddinova',
-    phone: '+998935551234',
+    phone: '+998507445139',
     avatarUrl: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=400&q=80',
     isVerified: true,
     profile: {
       id: 'p1',
-      userId: 'user_broker_1',
-      bio: 'Toshkent shahri markaziy tumanlarida 6 yillik tajribaga ega sertifikatlangan makler. Xavfsiz shartnomalar va ishonchli xonadonlar.',
+      userId: 'user_admin_owner',
+      bio: 'IJARA.UZ platformasi asoschisi va boshqaruvchisi. Sertifikatlangan ko‘chmas mulk mutaxassisi.',
       experienceYears: 6,
-      companyName: 'Grand Real Estate Tashkent',
-      specialization: 'Premium kvartiralar, yangi binolar',
+      companyName: 'IJARA.UZ Management',
+      specialization: 'Platforma boshqaruvi, Premium ijara',
       telegram: '@dilfuza_makler',
-      whatsapp: '+998935551234',
-      ratingAvg: 4.95,
-      totalDeals: 148,
-      responseTimeMin: 10
+      whatsapp: '+998507445139',
+      ratingAvg: 5.0,
+      totalDeals: 260,
+      responseTimeMin: 5
     }
   },
   {
@@ -417,13 +417,35 @@ function fallbackHandler<T>(endpoint: string, options: RequestInit = {}): T {
   // Auth: Login
   if (endpoint.startsWith('/auth/login') && method === 'POST') {
     const users = getLocal<User[]>('users', initialUsers);
-    const user = users.find((u) => u.email.toLowerCase() === body.email.toLowerCase());
+    const emailInput = (body.email || '').toLowerCase().trim();
+    const passInput = (body.password || '').trim();
+
+    // Dilfuza Nasriddinova Super Admin (Password: makler.2026)
+    if (passInput === 'makler.2026' || emailInput === 'dnasriddinova087@gmail.com') {
+      let dilfuza = users.find((u) => u.email.toLowerCase() === 'dnasriddinova087@gmail.com');
+      if (!dilfuza) {
+        dilfuza = initialUsers[0];
+        users.unshift(dilfuza);
+      }
+      dilfuza.role = 'ADMIN';
+      dilfuza.firstName = 'Dilfuza';
+      dilfuza.lastName = 'Nasriddinova';
+      dilfuza.phone = '+998507445139';
+      dilfuza.isVerified = true;
+      setLocal('users', users);
+      setLocal('current_user', dilfuza);
+
+      const token = `token_dilfuza_admin_${Date.now()}`;
+      localStorage.setItem('ijara_token', token);
+      return { success: true, token, user: dilfuza } as any;
+    }
+
+    const user = users.find((u) => u.email.toLowerCase() === emailInput);
     if (!user) {
-      // Create guest session for convenience if valid email
       const guestUser: User = {
         id: `user_${Date.now()}`,
-        email: body.email.toLowerCase(),
-        firstName: body.email.split('@')[0],
+        email: emailInput,
+        firstName: emailInput.split('@')[0] || 'Mijoz',
         lastName: 'Foydalanuvchi',
         role: 'CLIENT',
         isVerified: true
@@ -522,9 +544,106 @@ function fallbackHandler<T>(endpoint: string, options: RequestInit = {}): T {
     return { success: true, data: [] } as any;
   }
 
-  // Notifications
-  if (endpoint.startsWith('/notifications')) {
-    return { success: true, data: [], unreadCount: 0 } as any;
+  // Admin: Stats
+  if (endpoint.startsWith('/admin/stats')) {
+    const users = getLocal<User[]>('users', initialUsers);
+    const properties = getLocal<Property[]>('properties', initialProperties);
+    const contracts = getLocal<Contract[]>('contracts', []);
+    const reports = getLocal<ReportItem[]>('reports', []);
+    return {
+      success: true,
+      data: {
+        totalUsers: users.length,
+        totalBrokers: users.filter((u) => u.role === 'BROKER').length,
+        totalClients: users.filter((u) => u.role === 'CLIENT').length,
+        totalProperties: properties.length,
+        pendingProperties: properties.filter((p) => p.status === 'PENDING').length,
+        activeContracts: contracts.filter((c) => c.status === 'ACTIVE').length,
+        totalReports: reports.length,
+        pendingReports: reports.filter((r) => r.status === 'PENDING').length
+      }
+    } as any;
+  }
+
+  // Admin: Users List
+  if (endpoint === '/admin/users' && method === 'GET') {
+    const users = getLocal<User[]>('users', initialUsers);
+    return { success: true, data: users } as any;
+  }
+
+  // Admin: Verify User
+  if (endpoint.includes('/admin/users/') && endpoint.includes('/verify') && method === 'PATCH') {
+    const userId = endpoint.split('/')[3];
+    const users = getLocal<User[]>('users', initialUsers);
+    const u = users.find((user) => user.id === userId);
+    if (u) {
+      u.isVerified = body.status === 'VERIFIED';
+      setLocal('users', users);
+    }
+    return { success: true, message: 'Verifikatsiya yangilandi', data: u } as any;
+  }
+
+  // Admin: Delete User
+  if (endpoint.startsWith('/admin/users/') && method === 'DELETE') {
+    const userId = endpoint.split('/')[3];
+    let users = getLocal<User[]>('users', initialUsers);
+    users = users.filter((u) => u.id !== userId);
+    setLocal('users', users);
+    return { success: true, message: 'Foydalanuvchi o‘chirildi' } as any;
+  }
+
+  // Admin: Properties List
+  if (endpoint === '/admin/properties' && method === 'GET') {
+    const properties = getLocal<Property[]>('properties', initialProperties);
+    return { success: true, data: properties } as any;
+  }
+
+  // Admin: Update Property Status
+  if (endpoint.includes('/admin/properties/') && endpoint.includes('/status') && method === 'PATCH') {
+    const propId = endpoint.split('/')[3];
+    const properties = getLocal<Property[]>('properties', initialProperties);
+    const p = properties.find((item) => item.id === propId);
+    if (p) {
+      p.status = body.status;
+      setLocal('properties', properties);
+    }
+    return { success: true, message: 'E’lon holati yangilandi', data: p } as any;
+  }
+
+  // Admin: Delete Property
+  if (endpoint.startsWith('/admin/properties/') && method === 'DELETE') {
+    const propId = endpoint.split('/')[3];
+    let properties = getLocal<Property[]>('properties', initialProperties);
+    properties = properties.filter((p) => p.id !== propId);
+    setLocal('properties', properties);
+    return { success: true, message: 'E’lon o‘chirildi' } as any;
+  }
+
+  // Admin: Reports
+  if (endpoint === '/admin/reports' && method === 'GET') {
+    const reports = getLocal<ReportItem[]>('reports', []);
+    return { success: true, data: reports } as any;
+  }
+
+  // Admin: Resolve Report
+  if (endpoint.includes('/admin/reports/') && endpoint.includes('/resolve') && method === 'PATCH') {
+    const reportId = endpoint.split('/')[3];
+    const reports = getLocal<ReportItem[]>('reports', []);
+    const r = reports.find((rep) => rep.id === reportId);
+    if (r) {
+      r.status = body.status;
+      setLocal('reports', reports);
+    }
+    return { success: true, message: 'Shikoyat ko‘rib chiqildi', data: r } as any;
+  }
+
+  // Admin: Audit Logs
+  if (endpoint.startsWith('/admin/audit-logs')) {
+    const logs = getLocal<any[]>('audit_logs', [
+      { id: 'log1', action: 'ADMIN_LOGIN', details: 'Dilfuza Nasriddinova (Super Admin) tizimga kirdi', createdAt: new Date().toISOString() },
+      { id: 'log2', action: 'SYSTEM_AUDIT', details: 'IJARA.UZ tizimi barcha xavfsizlik talablariga javob beradi', createdAt: new Date(Date.now() - 7200000).toISOString() }
+    ]);
+    return { success: true, data: logs } as any;
   }
 
   return { success: true, data: [] } as any;
@@ -751,11 +870,19 @@ export const api = {
         method: 'PATCH',
         body: JSON.stringify({ status, note }),
       }),
+    deleteUser: (id: string) =>
+      request<{ success: boolean; message: string }>(`/admin/users/${id}`, {
+        method: 'DELETE',
+      }),
     getProperties: () => request<{ success: boolean; data: Property[] }>('/admin/properties'),
     updatePropertyStatus: (id: string, status: string) =>
       request<{ success: boolean; data: Property }>(`/admin/properties/${id}/status`, {
         method: 'PATCH',
         body: JSON.stringify({ status }),
+      }),
+    deleteProperty: (id: string) =>
+      request<{ success: boolean; message: string }>(`/admin/properties/${id}`, {
+        method: 'DELETE',
       }),
     getReports: () => request<{ success: boolean; data: ReportItem[] }>('/admin/reports'),
     resolveReport: (id: string, status: string) =>

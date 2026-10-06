@@ -215,4 +215,26 @@ router.get('/audit-logs', async (_req: AuthRequest, res: Response) => {
   }
 });
 
+// DELETE /api/admin/users/:id
+router.delete('/users/:id', async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    await prisma.user.delete({ where: { id } });
+    return res.json({ success: true, message: 'Foydalanuvchi muvaffaqiyatli o‘chirildi' });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// DELETE /api/admin/properties/:id
+router.delete('/properties/:id', async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    await prisma.property.delete({ where: { id } });
+    return res.json({ success: true, message: 'E’lon muvaffaqiyatli o‘chirildi' });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 export default router;

@@ -65,6 +65,9 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
               <li>
                 <button onClick={() => onNavigate('contracts')} style={{ color: 'inherit', textAlign: 'left' }}>Elektron Shartnomalar</button>
               </li>
+              <li>
+                <button onClick={() => onNavigate('admin')} style={{ color: '#38BDF8', textAlign: 'left', fontWeight: 600 }}>Admin Panel (Boshqaruv)</button>
+              </li>
             </ul>
           </div>
 

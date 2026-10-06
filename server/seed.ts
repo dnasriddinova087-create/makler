@@ -172,7 +172,8 @@ async function main() {
 
   // 4. Users (CLIENT, BROKER, ADMIN)
   const passwordHash = await bcrypt.hash('ijara123', 10);
-  const adminPasswordHash = await bcrypt.hash('admin123', 10);
+  const dilfuzaPasswordHash = await bcrypt.hash('makler.2026', 10);
+  const adminPasswordHash = await bcrypt.hash('makler.2026', 10);
 
   // Admin User
   const adminUser = await prisma.user.create({
@@ -188,15 +189,15 @@ async function main() {
     }
   });
 
-  // Broker 1 (Dilfuza Nasriddinova - Top Verified Broker)
+  // Owner & Super Admin (Dilfuza Nasriddinova - Top Verified Admin & Broker)
   const broker1 = await prisma.user.create({
     data: {
       email: 'dnasriddinova087@gmail.com',
-      passwordHash,
-      role: 'BROKER',
+      passwordHash: dilfuzaPasswordHash,
+      role: 'ADMIN',
       firstName: 'Dilfuza',
       lastName: 'Nasriddinova',
-      phone: '+998935551234',
+      phone: '+998507445139',
       avatarUrl: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=400&q=80',
       isVerified: true,
       profile: {

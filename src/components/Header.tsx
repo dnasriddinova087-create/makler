@@ -23,9 +23,10 @@ interface HeaderProps {
   currentTab: string;
   setCurrentTab: (tab: string) => void;
   onOpenAuth: () => void;
+  onOpenAdminPass: () => void;
 }
 
-export const Header: React.FC<HeaderProps> = ({ currentTab, setCurrentTab, onOpenAuth }) => {
+export const Header: React.FC<HeaderProps> = ({ currentTab, setCurrentTab, onOpenAuth, onOpenAdminPass }) => {
   const { user, logout, favoritesIds } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
@@ -172,13 +173,44 @@ export const Header: React.FC<HeaderProps> = ({ currentTab, setCurrentTab, onOpe
             </button>
           )}
 
-          {user?.role === 'ADMIN' && (
+          {user?.role === 'ADMIN' ? (
             <button
               onClick={() => setCurrentTab('admin')}
-              className="btn btn-sm badge-blue"
-              style={{ padding: '6px 12px', cursor: 'pointer' }}
+              className="btn btn-sm"
+              style={{
+                padding: '6px 14px',
+                backgroundColor: '#0F172A',
+                color: '#38BDF8',
+                border: '1px solid rgba(56, 189, 248, 0.4)',
+                fontWeight: 700,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                borderRadius: '8px',
+                boxShadow: '0 2px 8px rgba(15, 23, 42, 0.15)'
+              }}
             >
-              <ShieldCheck size={16} /> Admin Panel
+              <ShieldCheck size={16} color="#38BDF8" /> Admin Panel
+            </button>
+          ) : (
+            <button
+              onClick={onOpenAdminPass}
+              className="btn btn-sm"
+              style={{
+                padding: '6px 12px',
+                backgroundColor: '#F8FAFC',
+                color: '#475569',
+                border: '1px solid #CBD5E1',
+                fontWeight: 600,
+                fontSize: '12px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                borderRadius: '8px'
+              }}
+              title="Admin kirish (makler.2026)"
+            >
+              <ShieldCheck size={14} color="#64748B" /> Admin
             </button>
           )}
         </nav>
@@ -408,9 +440,13 @@ export const Header: React.FC<HeaderProps> = ({ currentTab, setCurrentTab, onOpe
               <LayoutDashboard size={16} /> Makler Kabineti
             </button>
           )}
-          {user?.role === 'ADMIN' && (
-            <button onClick={() => { setCurrentTab('admin'); setMobileMenuOpen(false); }} className="btn btn-navy btn-sm" style={{ justifyContent: 'flex-start' }}>
-              <ShieldCheck size={16} /> Admin Panel
+          {user?.role === 'ADMIN' ? (
+            <button onClick={() => { setCurrentTab('admin'); setMobileMenuOpen(false); }} className="btn btn-navy btn-sm" style={{ justifyContent: 'flex-start', color: '#38BDF8', backgroundColor: '#0F172A' }}>
+              <ShieldCheck size={16} color="#38BDF8" /> Admin Panel (Dilfuza)
+            </button>
+          ) : (
+            <button onClick={() => { onOpenAdminPass(); setMobileMenuOpen(false); }} className="btn btn-secondary btn-sm" style={{ justifyContent: 'flex-start' }}>
+              <ShieldCheck size={16} color="#64748B" /> Admin Panel (Parol bilan)
             </button>
           )}
         </div>
